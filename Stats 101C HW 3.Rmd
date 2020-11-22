@@ -1,0 +1,267 @@
+---
+title: "Stats 101C HW 3"
+author: "Anna Piskun"
+date: "10/29/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR)
+```
+
+The problems of homework 3 are from the textbook section 4.7 and 5.4:
+
+### Problem 1: Exercise 4.7.5
+
+5. We now examine the differences between LDA and QDA.
+
+(a) If the Bayes decision boundary is linear, do we expect LDA or QDA to perform better on the training set? On the test set?
+
+If the Bayes decision boundary is linear, we can assume that the classes have a common covariance matrix. Thus, we expect LDA to perform better on the testing data set. However, LDA is a simpler, less flexible model of which if the assumptions do not hold can lead to high bias. As a result, due to the more flexible nature of a QDA model, it will perform better on the training set; however, this can lead to an overfitted model that won't preform well on the test set. 
+
+(b) If the Bayes decision boundary is non-linear, do we expect LDA or QDA to perform better on the training set? On the test set?
+
+If the Bayes decision boundary is non-linear, the classes do not share a common covariance matrix and as such QDA will perform better on both the training and test sets. One downfall of the LDA model, is that if the assumptions do not hold then it can lead to poor estimates and a high bias. Since a shared covariance matrix is one of the key assumptions, and LDA only performs well on linear assumptions it will perform worse than QDA on both of the data sets. 
+
+(c) In general, as the sample size n increases, do we expect the test prediction accuracy of QDA relative to LDA to improve, decline, or be unchanged? Why?
+
+As the sample size n increases we expect the test prediction accuracy of QDA relative to LDA to improve. LDA is a very simple model while QDA is more complex  in that it needs to estimate more parameters, since there is one covariance matrix for each class. Since QDA is a much more flexible model, it will fit the data much better than LDA. However, the large sample size will help account for the increased variability that accompanies increased flexibility. Thus, it is recommended to use QDA for test sets with a large sample size. 
+
+
+(d) True or False: Even if the Bayes decision boundary for a given problem is linear, we will probably achieve a superior test error rate using QDA rather than LDA because QDA is flexible enough to model a linear decision boundary. Justify your answer.
+
+False. One key issue with QDA is that its flexibility can lead to severe overfitting of the data. If the test set is small, looking at the Bias-Variance trade-off, we would prefer to have lower variability. If this is the case, then it will be better to proceed with LDA which will fit a linear problem well. 
+
+### Problem 2: Exercise 4.7.13 (the models should be compared using 5-fold CV and not a validation set approach)
+
+13. Using the Boston data set, fit classification models in order to predict whether a given suburb has a crime rate above or below the median. Explore logistic regression, LDA, and KNN models using various subsets of the predictors. Describe your findings.
+
+
+```{r}
+library(MASS)
+attach(Boston)
+summary(Boston)
+
+median <- median(Boston$crim)
+
+Boston$crim01 <- factor(ifelse(Boston$crim > median, 1, 0)) 
+
+
+# 1 = crime rate above median, 0 = crime rate below median
+
+par(mfrow = c(3,4))
+boxplot(Boston$zn~Boston$crim01)
+boxplot(Boston$indus~Boston$crim01)
+boxplot(Boston$nox~Boston$crim01)
+boxplot(Boston$rm~Boston$crim01)
+boxplot(Boston$age~Boston$crim01)
+boxplot(Boston$dis~Boston$crim01)
+boxplot(Boston$rad~Boston$crim01)
+boxplot(Boston$tax~Boston$crim01)
+boxplot(Boston$ptratio~Boston$crim01)
+boxplot(Boston$black~Boston$crim01)
+boxplot(Boston$lstat~Boston$crim01)
+boxplot(Boston$medv~Boston$crim01)
+
+```
+
+
+In order to determine which predictors are the most important we analyze the boxplots with the largest graphical differences between crim01 = 0, and crim01 = 1. Using this strategy, we find that zn, indus, nox, age, dis, rad, and tax are potentially significant predictors that should be included in our model. They have the clearest differences in their individual boxplot between the two levels of our crim01 variable. From these predictors we can randomly choose three different subsets to fit our models to. My first subset will just include $tax$, the second subset will include $tax$, $rad$, and $indus$, and the third subset will include $tax$, $rad$, $indus$, $age$, $dis$, $zn$, and $nox$. 
+
+
+```{r}
+library(caret)
+#Subset 1
+levels(Boston$crim01) <- sub("^0$", "below", levels(Boston$crim01))
+levels(Boston$crim01) <- sub("^1$", "above", levels(Boston$crim01))
+
+
+#specify how to evaluate our models
+
+train_control <- trainControl(method="cv", number = 5, 
+                              classProbs = TRUE, 
+                              savePredictions = TRUE)
+
+#KNN 
+
+KNNfit <- train(crim01~tax, 
+                data = Boston, method = 'knn',
+                preProc = c("center", "scale"),
+                trControl = train_control)
+
+#logistic regression 
+
+LRfit <- train(crim01 ~ tax, 
+                data = Boston, method = "glm",
+                family = "binomial",
+                preProc = c("center", "scale"),
+                trControl = train_control)
+  
+
+#LDA 
+
+LDAfit <- train(crim01 ~ tax, 
+               data = Boston, method = "lda",
+               preProc = c("center", "scale"),
+               trControl = train_control)
+
+KNNfit
+LRfit
+LDAfit
+
+
+#Subset 2: tax + rad + indus
+
+#KNN 
+
+KNNfit.1 <- train(crim01~tax + rad + indus, 
+                data = Boston, method = 'knn',
+                preProc = c("center", "scale"),
+                trControl = train_control)
+
+#logistic regression 
+
+LRfit.1 <- train(crim01 ~ tax + rad + indus, 
+                data = Boston, method = "glm",
+                family = "binomial",
+                preProc = c("center", "scale"),
+                trControl = train_control)
+  
+#LDA 
+
+LDAfit.1 <- train(crim01 ~ tax + rad + indus, 
+               data = Boston, method = "lda",
+               preProc = c("center", "scale"),
+               trControl = train_control)
+
+KNNfit.1
+LRfit.1
+LDAfit.1
+
+#Subset 3: all important predictors including tax, rad, indus, age, dis, zn, and nox
+
+#KNN 
+
+KNNfit.2 <- train(crim01~tax + rad + indus + age + dis + zn + nox, 
+                data = Boston, method = 'knn',
+                preProc = c("center", "scale"),
+                trControl = train_control)
+
+#logistic regression 
+
+LRfit.2 <- train(crim01 ~ tax + rad + indus + age + dis + zn + nox, 
+                data = Boston, method = "glm",
+                family = "binomial",
+                preProc = c("center", "scale"),
+                trControl = train_control)
+  
+
+#LDA 
+
+LDAfit.2 <- train(crim01 ~ tax + rad + indus + age + dis + zn + nox, 
+               data = Boston, method = "lda",
+               preProc = c("center", "scale"),
+               trControl = train_control)
+
+KNNfit.2
+LRfit.2
+LDAfit.2
+
+```
+
+
+From the first subset of data (only predictor variable being $tax$) we find using 5-fold CV that a KNN model using k=5 is the best model due to it having the highest model accuracy of 0.915. For the second subset of data ($tax$, $rad$, $indus$) we find that a KNN model using k=5 is once again the best model with an improved accuracy of 0.929. For subset 3 which included all important predictors ($tax$, $rad$, $indus$, $age$, $dis$, $zn$, $nox$) the KNN model with k = 5 was the best model with the highest accuracy of 0.934. Thus, the overall best model is the KNN model with 7 predictors: ($tax$, $rad$, $indus$, $age$, $dis$, $zn$, $nox$, and with k = 5 which had an accuracy percentage of approximately 94%. 
+
+
+### Problem 3: Exercise 5.4.8
+
+We will now perform cross-validation on a simulated data set.
+
+(a) Generate a simulated data set as follows: In this data set, what is n and what is p? Write out the model used to generate the data in equation form.
+
+```{r}
+set.seed(1)
+x <- rnorm(100)
+y <- x-2*x^2+rnorm(100)
+```
+
+In this data set, n = 100 and p = 2. The model used to generate the data looks like the following in equation form: Y = X - 2(X^2) + error(e). 
+
+(b) Create a scatterplot of X against Y . Comment on what you find.
+
+```{r}
+plot(x,y)
+```
+
+Looking at the scatterplot of X against Y we see a clear parabolic trend in the data. This suggests a non-linear relationship between x and y. Considering we simulated the data and model, we know that there is a quadratic relationship between x and y. 
+
+(c) Set a random seed, and then compute the LOOCV errors that result from fitting the following four models using least squares:
+
+Note you may find it helpful to use the data.frame() function to create a single data set containing both X and Y.
+
+```{r}
+library(boot)
+
+set.seed(123) 
+data <- data.frame(x,y)
+
+glm.fit <- glm(y ~ x, data = data,
+               family = "gaussian")
+cv.glm(data, glm.fit)$delta[1]
+
+glm.fit.1 <- glm(y ~ poly(x, 2), data = data,
+                  family = "gaussian")
+cv.glm(data, glm.fit.1)$delta[1]
+
+glm.fit.2 <- glm(y ~ poly(x, 3), data = data,
+                  family = "gaussian")
+cv.glm(data, glm.fit.2)$delta[1]
+
+glm.fit.3 <- glm(y ~ poly(x, 4), data = data,
+                  family = "gaussian")
+cv.glm(data, glm.fit.3)$delta[1]
+```
+
+
+(d) Repeat (c) using another random seed, and report your results. Are your results the same as what you got in (c)? Why?
+
+```{r}
+library(boot)
+
+set.seed(147)
+data <- data.frame(x,y)
+
+glm.fit <- glm(y ~ x, data = data,
+                 family = "gaussian")
+cv.glm(data, glm.fit)$delta[1]
+
+glm.fit.1 <- glm(y ~ poly(x, 2), data = data,
+                 family = "gaussian")
+cv.glm(data, glm.fit.1)$delta[1]
+
+glm.fit.2 <- glm(y ~ poly(x, 3), data = data,
+                 family = "gaussian")
+cv.glm(data, glm.fit.2)$delta[1]
+
+glm.fit.3 <- glm(y ~ poly(x, 4), data = data,
+                 family = "gaussian")
+cv.glm(data, glm.fit.3)$delta[1]
+```
+
+The results for D are the same as the ones we got in C. This makes sense since LOOCV does not incorporate randomness and uses the same base data with every additional degree added to the polynomial model. 
+
+(e) Which of the models in (c) had the smallest LOOCV error? Is this what you expected? Explain your answer.
+
+The model with degree 2 had the smallest LOOCV error, which is what was expected since we fit a quadratic equation to this model and saw in our scatterplot that the relationship between X and Y is quadratic. 
+
+(f) Comment on the statistical significance of the coefficient estimates that results from fitting each of the models in (c) using least squares. Do these results agree with the conclusions drawn based on the cross-validation results?
+
+```{r}
+summary(glm.fit.3)
+```
+
+
+Looking at our model for a polynomial of degree 4, we see that the only statistically significant coefficient estimates result from fitting our quadratic model. These results directly support the conclusions drawn based on the cross-validation results as we saw above. The model with the lowest LOOCV was in fact the quadratic model and once again the summary output above shows that the third and fourth degree polynomial models were not statistically significant. 
+
+

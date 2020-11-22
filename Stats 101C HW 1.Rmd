@@ -1,0 +1,142 @@
+---
+title: "Stats 101C HW 1"
+author: "Anna Piskun"
+date: "10/14/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Problem 1: Exercise 5
+
+
+5. What are the advantages and disadvantages of a very flexible (versus a less flexible) approach for regression or classification? Under what circumstances might a more flexible approach be preferred to a less flexible approach? When might a less flexible approach be preferred?
+
+
+    One advantage of a flexible approach for regression or classification is that it allows us to simplify complex data sets and better fit non-linear models as well as decrease bias. By having a very flexible model we can more easily fit complicated data and trends. However, a disadvantage of a very flexible approach is that we run the risk of overfitting the training data due to having a greater number of parameters which as a result may capture excess noise not allowing us to extrapolate our findings and directly increasing variance. When faced with strange data that follows very strange, complicated, non-linear trends it is preferred to use a more flexible approach. Additionally, a more flexible approach may be preffered when we want to increase the predictability of our model. On the other had, a less flexible approach may be preferred when attempting to simplify data patterns to make it easier to visualize and understand. Likewise, if the data follows a linear trend it is preferred to use a less flexible approach. 
+
+
+### Problem 2: Exercise 6
+
+6. Describe the differences between a parametric and a non-parametric statistical learning approach. What are the advantages of a para- metric approach to regression or classification (as opposed to a non- parametric approach)? What are its disadvantages?
+
+    Using a parametric statistical learning approach, we first make an assumption about the form of function f(x). This leads us to have a fixed set of parameters, that we fit the training data set to. Non-parametric statistical models may have the potential to have an infinite number of parameters, meaning that the complexity of a non-parametric model grows with the training data. Thus, we end up choosing a function that closely fits the data (or in other words we fit a function to the data). Some advantages of a parametric approach are that it allows us to fit any sort of data to a functional form (linear regression, logistic, etc.) as well as allow us to be able to interpret the results more easily. Additionally, parametric models do not require as large of a training data set in comparison to a non-parametric model and can create meaningful findings even if overall fit is not completely perfect. However, some disadvantages of the parametric statistical learning approach is that with too many parameters, the model may over-fit the training data preventing us from being able to extrapolate the model's findings and leading to large variance and potentially high bias. 
+
+
+### Problem 3: Exercise 10
+
+10. This exercise involves the Boston housing data set.
+
+(a) To begin, load in the Boston data set. The Boston data set is part of the MASS library in R.
+
+```{r}
+library(MASS)
+```
+
+Now the data set is contained in the object Boston.
+
+Read about the data set:
+
+How many rows are in this data set? How many columns? What do the rows and columns represent?
+
+There are 506 rows and 14 columns. The columns represent predictors used (crime, proportion of non-retail business, pupil-teacher ratio, etc.) while the rows represent the individual suburbs included in this data set. 
+
+(b) Make some pairwise scatterplots of the predictors (columns) in this data set. Describe your findings.
+
+```{r}
+pairs(Boston)
+```
+
+
+
+From the pairwise scatterplots of all the predictors we are able to see a few associations. For example, in the most bottom left hand corner we can clearly see that there is a potential relationship between per capita crime rate by town and the median value of owner occupied homes. It looks as though the lower the crime rate is, the higher the median value is of a home. This makes sense given the fact that most people see living in a safe community as desirable. Another clear relationship exists between crime and age, where the higher the proportion of owner-occupied units built prior to 1940 is then the higher the crime rate is. Another potential relationship exists between lstat and medv, where the higher percentage of people of lower status is associated with a lower median home value. Despite seeing some initial relationships, we must conduct further testing to see if these predictors are significant. 
+  
+
+(c) Are any of the predictors associated with per capita crime rate? If so, explain the relationship.
+
+```{r}
+par(mfrow = c(3,3))
+plot(Boston$zn, Boston$crim)
+plot(Boston$indus, Boston$crim)
+boxplot((Boston$crim~Boston$chas))
+plot(Boston$nox, Boston$crim)
+plot(Boston$rm, Boston$crim)
+plot(Boston$age, Boston$crim)
+plot(Boston$dis, Boston$crim)
+boxplot(Boston$crim~Boston$rad)
+plot(Boston$tax, Boston$crim)
+plot(Boston$ptratio, Boston$crim)
+plot(Boston$black, Boston$crim)
+plot(Boston$lstat, Boston$crim)
+plot(Boston$medv, Boston$crim)
+```
+
+    
+From the above plots we can see that there may be a relationship between age and crime, dis and crime, lstat and crime, and medv and crime. The higher the proportion of owner-occupied units built prior to 1940 the higher the crime rate is. However, a longer mean distance from employment centers is associated with a lower crime rate. There is a slight upward trend between lstat and crim indicating that the higher the proportion of "lower status" people then the higher the crime rate is. Lastly, as to be expected, higher crime rates are associated with lower median value homes. 
+
+(d) Do any of the suburbs of Boston appear to have particularly high crime rates? Tax rates? Pupil-teacher ratios? Comment on the range of each predictor.
+
+```{r}
+range(Boston$crim)
+range(Boston$tax)
+range(Boston$ptratio)
+
+hist(Boston$crim, breaks = 35)
+hist(Boston$tax, breaks = 20)
+hist(Boston$ptratio, breaks = 20)
+```
+
+    
+While most of the Boston suburbs had very low crime rates, a few suburbs stuck out as having extraordinarily high crime rates reaching above 60%. The range of crime rates was 0.00632 to 88.97620. There was also a high frequency of suburbs with high tax rates, but this could potentially be explained another predictor such as proportion of residential land zoned or the proportion of non-retail business acres per town. The range of property tax rate per $10,000 ranged from 187 to 711. Lastly, the majority of Boston suburbs had a pupil to teacher ratio of about 20. While the histogram is left skewed, most suburbs clustered around this ratio. The range for this predictor is from 12.6 to 22. 
+
+(e) How many of the suburbs in this data set bound the Charles river?
+
+```{r}
+sum(Boston$chas != 0)
+```
+
+
+35 suburbs are bound by the Charles River. 
+
+(f) What is the median pupil-teacher ratio among the towns in this data set?
+
+```{r}
+median(Boston$ptratio)
+```
+
+
+    
+19.05 is the median pupil teacher ratio among the towns in this data set. 
+
+(g) Which suburb of Boston has lowest median value of owner- occupied homes? What are the values of the other predictors for that suburb, and how do those values compare to the overall ranges for those predictors? Comment on your findings.
+
+```{r}
+n <- order(Boston$medv)
+
+ordered <-  Boston[which(Boston$medv == 5), ]
+
+summary(ordered)
+
+summary(Boston)
+```
+
+
+
+Suburb 399 and 406 have the lowest median values of owner-occupied homes. Looking at the other predictors for Suburb 399 we find that it has a crime rate of 38.35%, no zoning for residential land, a proportion of 18.10 non-retail business acres per town, is not bound by the Charles river, 0.6930 nitrogen oxide concentration, an average of 5.453 rooms per dwelling, 100% of owner occupied units built prior to 1940, is only 1.4896 miles from 5 Boston employment centers, an index of accessibility to radial highways of 24, tax rate of 666, pupil to student ratio of 20.2, a proportion of 396.90 African Americans by town, poverty rate of 30.59%, and median home value of $5,000. Compared with the other suburbs, combined Suburb 399 and Suburb 406 have some of the highest crime rates, lowest residential zoning, high proportion of non-retail business acres, some of the highest levels of nitrogen oxide concentration, lower amount of rooms per dwelling, highest proportion of owner occupied units, are some of the closest suburbs to employment centers, have incredibly high accessibility to highways, a high tax rate and pupil to student ratio, and lastly both these suburbs have one of the highest rates of poverty. All of these factors make Suburb 399 and 406 not desirable and helps to explain their low home value. 
+
+(h) In this data set, how many of the suburbs average more than seven rooms per dwelling? More than eight rooms per dwelling? Comment on the suburbs that average more than eight rooms per dwelling.
+
+```{r}
+new <- Boston[which(Boston$rm > 8), ]
+summary(new)
+
+summary(Boston)
+```
+
+    
+In this data set, 64 suburbs average more than seven rooms per dwelling, and 13 average more than eight rooms per dwelling. The suburbs that average more than 8 rooms per dwelling on average have lower crime rates, higher residential zoning, lower proportion of non-retail business acres per town, slightly lower nitrogen oxide concentration, higher proportion of owner-occupied units, shorter distance to employment centers, lower index of accessibility, lower tax rates, smaller pupil to student ratio, much lower percentage of poverty, and significantly higher median values of homes. Although a subset of only 13 suburbs, from our above analysis these suburbs may be considered more desirable and therefore be of more value. 
+
+

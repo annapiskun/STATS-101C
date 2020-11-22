@@ -1,0 +1,230 @@
+---
+title: "Stats 101C HW 4"
+author: "Anna Piskun"
+date: "11/13/2020"
+output: 
+  pdf_document: 
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Problem 6.8.2
+
+### For parts (a) through (c), indicate which of i. through iv. is correct. Justify your answer.
+
+i. More flexible and hence will give improved prediction ac- curacy when its increase in bias is less than its decrease in variance.
+
+ii. More flexible and hence will give improved prediction accu- racy when its increase in variance is less than its decrease in bias.
+
+iii. Less flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance.
+
+iv. Less flexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease in bias.
+
+
+### a) The lasso, relative to least squares, is:
+
+iii. Less flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance. 
+
+LASSO forces some estimated coefficients to be exactly zero when lambda is large. Therefore, it performs variable selection. Thus, with less variables, LASSO is less flexible which leads to less variance but an increase in bias. As a result, LASSO can lead to a better model with a lower EPE, or improved prediction accuracy, than LS regression if its increase in bias is less than its decrease in variance.  
+
+### b) Repeat (a) for ridge regression relative to least squares.
+
+iii. Less flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance.
+
+Since coefficients with high-variability are shrunk towards 0, ridge regression provides smaller variability (and flexibility). That is, as lambda increases the overall flexibility of the ridge regression model decreases which leads to variance decreasing but an increase in bias. Thus, if we improve variability, we make bias worse. But if bias gets worse more slowly than variability gets better, then we can have a lower expected prediction error.  Consequently, ridge regression results in a model with a lower expected prediction error, and therefore improved prediction accuracy, than least squares regression. 
+
+### c) Repeat (a) for non-linear methods relative to least squares.
+
+ii. More flexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease in bias.
+
+Non-linear methods, say for example QDA, by nature are more flexible. They estimate more parameters which leads to higher flexibility but also higher variance. Non-linear methods are less restrictive about the parameters which leads to this higher flexibility but lower bias (in terms of the bias variance trade-off). Thus, a non-linear method will have improved prediction accuracy if its increase in variance is less than its decrease in bias. 
+
+
+### Problem 6.8.5 
+\newpage
+
+
+## Problem 6.8.9
+
+In this exercise, we will predict the number of applications received using the other variables in the College data set.
+
+```{r}
+library(ISLR)
+library(caret)
+attach(College)
+n <- nrow(College)
+```
+
+### (a) Split the data set into a training set and a test set.
+
+```{r}
+# Pre-processing.
+# Split into training and validation data.
+set.seed(123)
+n_train <- round(n/2)
+n_val <- n - n_train
+i.train <- sample(1:n, n_train, replace = FALSE)
+
+college.train <- College[i.train,]  
+college.test <- College[-i.train,]
+```
+
+### (b) Fit a linear model using least squares on the training set, and report the test error obtained.
+
+```{r}
+# Fit linear regression model to training data.
+set.seed(123)
+ml <- lm(Apps~., data = college.train)
+summary(ml)
+
+# Predictions on the test data.
+predictions <- predict(ml, newdata = college.test) 
+
+MSE <- sum((college.test$Apps - predictions)^2)/n_val
+
+MSE
+```
+
+The test error is 1373995.      
+
+### (c) Fit a ridge regression model on the training set, with λ chosen by cross-validation. Report the test error obtained.
+
+```{r}
+library(glmnet)
+
+x <- model.matrix(Apps~., college.train)[,-1]
+z <- model.matrix(Apps~., college.test)[, -1]
+y <- college.train$Apps
+
+i.exp <- seq(10, -2, length = 100)
+grid <- 10^i.exp
+
+ridge.mod <- glmnet(x, y, family = "gaussian", alpha = 0, 
+                    lambda = grid, standardize = TRUE)
+set.seed(123)
+cv.output <- cv.glmnet(x, y, family = "gaussian", alpha = 0, 
+                    lambda = grid, standardize = TRUE,
+                    nfolds = 10)
+
+best.lambda.cv <- cv.output$lambda.min
+best.lambda.cv
+
+ridge.predictions <- predict(ridge.mod, newx = z, s = best.lambda.cv)
+
+MSE.ridge <- sum((college.test$Apps - ridge.predictions)^2)/n_val
+
+MSE.ridge
+```
+
+The test error is 1451546, which is slightly higher than the test error for least squares regression. 
+
+### (d) Fit a lasso model on the training set, with λ chosen by cross-validation. Report the test error obtained, along with the number of non-zero coefficient estimates.
+
+```{r}
+lasso.mod <- glmnet(x, y, family = "gaussian", alpha = 1, 
+                    lambda = grid, standardize = TRUE)
+set.seed(123)
+lasso.cv.output <- cv.glmnet(x, y, family = "gaussian", alpha = 1, 
+                       lambda = grid, standardize = TRUE,
+                       nfolds = 10)
+lasso.best.lambda.cv <- lasso.cv.output$lambda.min
+lasso.best.lambda.cv
+
+lasso.predictions <- predict(lasso.mod, newx = z, s = lasso.best.lambda.cv)
+
+predict(lasso.mod, s = lasso.best.lambda.cv, type = "coefficients")
+
+MSE.lasso <- sum((college.test$Apps - lasso.predictions)^2)/n_val
+MSE.lasso
+```
+
+The test error is 1390403 which is less than Ridge Regression but slightly larger than the LS test error and there are 13 non-zero coefficient estimates. 
+
+### (e) Fit a PCR model on the training set, with M chosen by cross- validation. Report the test error obtained, along with the value of M selected by cross-validation.
+
+```{r}
+library(pls)
+set.seed(123)
+
+pcr.fit <- pcr(Apps~., data = college.train, scale = TRUE, validation = "CV")
+summary(pcr.fit)
+validationplot(pcr.fit, val.type = 'MSEP')
+
+pcr.predictions <- predict(pcr.fit, college.test, ncomp = 10)
+
+MSE.pcr <- sum((college.test$Apps - pcr.predictions)^2)/n_val
+MSE.pcr
+
+```
+
+From the validation plot we see that M = 10 principal components has relatively low MSE (MSE generally plateaus around 10) and includes fewer predictors so using that in our model we get a test error of 2887472 which is significantly larger than LS, RR, and Lasso. 
+
+### (f) Fit a PLS model on the training set, with M chosen by cross- validation. Report the test error obtained, along with the value of M selected by cross-validation.
+
+```{r}
+pls.fit <- plsr(Apps~., data = college.train, scale = TRUE, validation = "CV")
+summary(pls.fit)
+validationplot(pls.fit, val.type = 'MSEP')
+
+pls.predictions <- predict(pls.fit, college.test, ncomp = 6)
+
+MSE.pls <- sum((college.test$Apps - pls.predictions)^2)/n_val
+MSE.pls
+
+```
+
+WE use M = 6 principal components (lowest MSE using fewer predictors), and the test error is 1458481, which is larger than the Ridge Regression, LS, and Lasso test errors.
+
+### (g) Comment on the results obtained. How accurately can we pre- dict the number of college applications received? Is there much difference among the test errors resulting from these five approaches?
+
+Looking at the test errors of the different models, LS, Ridge Regression, Lasso, and PLS all had similar results while PCR had a significantly larger test error rate. Out of all 5 models, LS had the smallest test error rate and as a result performed the best on predicting the number of college applications received. We can see this by calculating the r-squared values for all of the models. We see below that all models have an r-squared of 0.85 or greater which shows that a significant amount of the variance can be explained by the model, and that all of the models are able to predict the number of college applications received with relatively high accuracy. Furthermore, LS had the highest r-squared value (0.9289176) which also supports our earlier conclusion that LS performed the best (PCR the worst) in comparison to the other 4 models. 
+
+```{r}
+#calculate r squared to evaluate model accuracy 
+#compare how the models perform compared to each other 
+
+avg.test <- mean(college.test$Apps)
+ml.r2 <-  1 - sum((college.test$Apps - predictions)^2) /
+  sum((college.test$Apps - avg.test)^2)
+
+ridge.r2 <-  1 - sum((college.test$Apps - ridge.predictions)^2) /
+  sum((college.test$Apps - avg.test)^2)
+
+lasso.r2 <- 1 - sum((college.test$Apps - lasso.predictions)^2) /
+  sum((college.test$Apps - avg.test)^2)
+
+pcr.r2 <- 1 - sum((college.test$Apps - pcr.predictions)^2) /
+  sum((college.test$Apps - avg.test)^2)
+
+pls.r2 <- 1- sum((college.test$Apps - pls.predictions)^2) /
+  sum((college.test$Apps - avg.test)^2)
+
+ml.r2
+ridge.r2
+lasso.r2
+pcr.r2
+pls.r2
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
