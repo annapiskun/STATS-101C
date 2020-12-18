@@ -1,0 +1,268 @@
+---
+title: "Stats 101C HW 6"
+author: "Anna Piskun"
+date: "11/29/2020"
+output: 
+  pdf_document: 
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 5.4.2 
+
+### 2. We will now derive the probability that a given observation is part of a bootstrap sample. Suppose that we obtain a bootstrap sample from a set of n observations.
+
+### (a) What is the probability that the first bootstrap observation is not the jth observation from the original sample? Justify your answer.
+
+The probability that the first bootstrap observation is not the jth observation from the original sample is 1 - 1/n. We find this by noting that n is the sample size and thus there are n samples. Since we are discussing the first observation and bootstrap sampling works by choosing observations with replacement, we are equally likely to pick each observation on the first try giving us 1 - 1/n.  
+
+### (b) What is the probability that the second bootstrap observation is not the jth observation from the original sample?
+
+As we mentioned earlier, since the mechanics of bootstrap sampling requires picked observations to be replaced, the probability that the second bootstrap observation is not the jth observation from the original sample is still 1 - 1/n. 
+
+### (c) Argue that the probability that the jth observation is not in the bootstrap sample is (1 − 1/n)^n.
+
+From parts a and b, we can conclude that the probability that any bootstrap observation is not the jth observation is 1-1/n (again due to drawing with replacement). Thus, if we want to find the probability that the jth observation is not in the bootstrap sample as a whole, we must take a total of n bootstrap observations from our original sample. This gives us a probability of (1-1/n)^n since we can assume that each observation is independent due to the replacement factor found in bootstrapping. 
+
+### (d) When n = 5, what is the probability that the jth observation is in the bootstrap sample?
+
+When n = 5, the probability that the jth observation is in the boostrap sample is 0.67232. 
+
+```{r}
+#probability that the jth observation is NOT in the bootstrap sample 
+(1 - 1/5)^5
+
+#we find the probability that the jth observation is IN the bootstrap sample
+#by subtracting the value found above from 1
+
+1-(1 - 1/5)^5
+
+```
+
+(e) When n = 100, what is the probability that the jth observation is in the bootstrap sample?
+
+When n = 100, the probability that the jth observation is in the bootstrap sample is 0.6339677. 
+
+```{r}
+#probability that the jth observation is NOT in the bootstrap sample 
+(1 - 1/100)^100
+
+#we find the probability that the jth observation is IN the bootstrap sample
+#by subtracting the value found above from 1
+
+1-(1 - 1/100)^100
+```
+
+(f) When n = 10, 000, what is the probability that the jth observation is in the bootstrap sample?
+
+When n = 10,000, the probability that the jth observation is in the boostrap sample is 0.632139. 
+
+```{r}
+#probability that the jth observation is NOT in the bootstrap sample 
+(1 - 1/10000)^10000
+
+#we find the probability that the jth observation is IN the bootstrap sample
+#by subtracting the value found above from 1
+
+1-(1 - 1/10000)^10000
+```
+
+(g) Create a plot that displays, for each integer value of n from 1 to 100,000, the probability that the jth observation is in the bootstrap sample. Comment on what you observe.
+
+```{r}
+x <- seq(1, 100000)
+y <-function(n){
+ z <-1 -(1-1/n)^n
+return(z)
+  }
+
+plot(x, y(x), xlab="value of n", ylab="Calculated Probability", main = "Probability that the Jth Observation is in the Bootstrap Sample for n values of 1-100,000", cex.main = 0.8)
+
+```
+
+```{r}
+plot(x, y(x), xlab="value of n", ylab="Calculated Probability", main = "Probability that the Jth Observation is in the Bootstrap Sample for n values of 1-100,000", log = "x", cex.main = 0.8)
+
+```
+
+We notice from the plot that the probabilities seem to converge to a clear horizontal asymptote. Using a log transformation of x to better visualize this asymptote, we find that the probabilities converge around 0.6 and a n value of around 100.
+
+### (h) We will now investigate numerically the probability that a bootstrap sample of size n = 100 contains the jth observation. Here j = 4. We repeatedly create bootstrap samples, and each time we record whether or not the fourth observation is contained in the bootstrap sample. Comment on the results obtained.
+
+```{r}
+store <- rep(NA, 10000)
+
+for(i in 1:10000){
+  store[i] <- sum(sample(1:100, rep=TRUE)==4)>0}
+
+mean(store)
+```
+
+Using the given code, every time I re-run and create a new bootstrap sample, I get a value of approximately 0.63. This tells us that each time we created a bootstrap sample, it sampled 0-100 with replacement and found that around 63% of the time the sample contained the number 4. This supports the earlier conclusion found by looking at the plots, that the probabilities do in fact converge at a probability of around 0.63 with an n value of 100. 
+
+## Problem 8.4.10
+
+```{r}
+library(ISLR)
+attach(Hitters)
+nrow(Hitters)
+```
+
+### 10. We now use boosting to predict Salary in the Hitters data set.
+
+### (a) Remove the observations for whom the salary information is unknown, and then log-transform the salaries.
+
+```{r}
+data_clean <- na.omit(Hitters)
+nrow(data_clean)
+data_clean$Salary <- log(data_clean$Salary)
+```
+
+### (b) Create a training set consisting of the first 200 observations, and a test set consisting of the remaining observations.
+
+```{r}
+i.train <- 1:200
+hit.train <- data_clean[i.train,]
+hit.test <- data_clean[-i.train,]
+head(hit.train)
+nrow(hit.train)
+```
+
+### (c) Perform boosting on the training set with 1,000 trees for a range of values of the shrinkage parameter lambda. Produce a plot with different shrinkage values on the x-axis and the corresponding training set MSE on the y-axis.
+
+```{r, warning=FALSE}
+library(caret)
+library(gbm)
+set.seed(123)
+
+lambda <- seq(0.001, 0.3, length = 100)
+tr_errors <- length(lambda)
+n <- nrow(Hitters)
+n_train <- nrow(hit.train) 
+n_val <- n - n_train
+
+for (i in 1:tr_errors) {
+  boost_hitters <- gbm(Salary ~., data = hit.train, n.trees = 1000, distribution = "gaussian", shrinkage = lambda[i])
+  yhat.train <- predict(boost_hitters, hit.train)
+  tr_errors[i] <- sum((hit.train$Salary - yhat.train)^2)/n_val
+}
+
+plot(lambda, tr_errors, xlab = "Shrinkage Parameter Lambda", ylab = "Training Set MSE")
+
+
+```
+
+### (d) Produce a plot with different shrinkage values on the x-axis and the corresponding test set MSE on the y-axis.
+
+```{r}
+set.seed(123)
+lambda <- seq(0.00001, 0.6, length = 100)
+test_errors <- length(lambda)
+n <- nrow(Hitters)
+n_train <- nrow(hit.train) 
+n_val <- n - n_train
+
+for (i in 1:test_errors) {
+  boost_hitters <- gbm(Salary ~., data = hit.train, n.trees = 1000, distribution = "gaussian", shrinkage = lambda[i])
+  yhat.test <- predict(boost_hitters, newdata = hit.test)
+  test_errors[i] <- sum((hit.test$Salary - yhat.test)^2)/n_val
+}
+
+plot(lambda, test_errors, xlab = "Shrinkage Parameter Lambda", ylab = "Test Set MSE")
+```
+
+
+### (e) Compare the test MSE of boosting to the test MSE that results from applying two of the regression approaches seen in Chapters 3 and 6.
+
+```{r}
+set.seed(123)
+
+# fit a linear model
+
+ml <- lm(Salary~., data = hit.train)
+
+predictions <- predict(ml, newdata = hit.test)
+
+MSE.lm <- sum((hit.test$Salary - predictions)^2)/n_val
+
+MSE.lm
+
+#fit ridge regression model 
+
+library(glmnet)
+
+x <- model.matrix(Salary~., hit.train)[,-1]
+z <- model.matrix(Salary~., hit.test)[, -1]
+y <- hit.train$Salary
+
+i.exp <- seq(10, -2, length = 100)
+grid <- 10^i.exp
+
+ridge.mod <- glmnet(x, y, family = "gaussian", alpha = 0, 
+                    lambda = grid, standardize = TRUE)
+set.seed(123)
+cv.output <- cv.glmnet(x, y, family = "gaussian", alpha = 0, 
+                    lambda = grid, standardize = TRUE,
+                    nfolds = 10)
+
+best.lambda.cv <- cv.output$lambda.min
+
+ridge.predictions <- predict(ridge.mod, newx = z, s = best.lambda.cv)
+
+MSE.ridge <- sum((hit.test$Salary - ridge.predictions)^2)/n_val
+
+MSE.ridge
+
+#find lowest MSE for boosted model 
+min(test_errors)
+
+```
+
+Compared to a linear model and ridge regression model, we find that the boosted model has the lowest test MSE of 0.1306555, while the test MSEs for the LM and RR models were 0.2539602 and 0.232007, respectively. 
+
+### (f) Which variables appear to be the most important predictors in the boosted model?
+
+```{r}
+set.seed(123)
+hitters_boosted <- gbm(Salary ~., data = hit.train, n.trees = 1000, distribution = "gaussian", shrinkage = 0.01)
+summary(hitters_boosted)
+```
+
+In the boosted models, the most important variables appear to be *League*, *Errors*, *RBI*, *Years*, and *CHits*. 
+
+### (g) Now apply bagging to the training set. What is the test set MSE for this approach?
+
+```{r}
+set.seed(123)
+library(randomForest)
+bag_hitters <- randomForest(Salary ~ ., data = hit.train, mtry = 19, ntree = 1000, importance = T)
+bag_hitters <- predict(bag_hitters, hit.test, n.trees = 1000)
+MSE.bag <- sum((hit.test$Salary - bag_hitters)^2)/n_val
+MSE.bag
+```
+
+The test MSE for this approach is 0.1185516, which is smaller compared to the test MSE for boosting. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
